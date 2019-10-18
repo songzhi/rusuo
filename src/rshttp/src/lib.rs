@@ -35,9 +35,9 @@ fn spawn_and_log_error<F>(fut: F) -> task::JoinHandle<()>
 }
 
 
-pub async fn start_server() -> Result<()> {
+pub async fn start_server(addr: SocketAddr) -> Result<()> {
     pretty_env_logger::init();
-    let listener = TcpListener::bind("127.0.0.1:8080").await?;
+    let listener = TcpListener::bind(addr).await?;
     let mut incoming = listener.incoming();
 
     while let Some(Ok(stream)) = incoming.next().await {
