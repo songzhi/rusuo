@@ -1,0 +1,220 @@
+body,
+html {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  min-height: 400px;
+}
+
+body {
+  display: flex;
+  box-sizing: border-box;
+  justify-content: center;
+  align-items: center;
+  font-family: arial;
+  font-size: 12px;
+  flex-direction: column;
+}
+
+svg {
+  border-radius: 50%;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.cloud {
+  -webkit-transform-origin: 50%;
+          transform-origin: 50%;
+}
+.cloud.blur {
+  -webkit-filter: url(#blur);
+          filter: url(#blur);
+}
+
+.sky-gradient-0 {
+  background: linear-gradient(to bottom, #4a4969 0%, #7072ab 50%, #cd82a0 100%);
+}
+
+.sky-gradient-1 {
+  background: linear-gradient(to bottom, #757abf 0%, #8583be 60%, #eab0d1 100%);
+}
+
+.sky-gradient-2 {
+  background: linear-gradient(to bottom, #82addb 0%, #ebb2b1 100%);
+}
+
+.sky-gradient-3 {
+  background: linear-gradient(to bottom, #94c5f8 1%, #a6e6ff 70%, #b1b5ea 100%);
+}
+
+.sky-gradient-4 {
+  background: linear-gradient(to bottom, #1e528e 0%, #265889 50%, #9da671 100%);
+}
+
+.sky-gradient-5 {
+  background: linear-gradient(to bottom, #1e528e 0%, #728a7c 50%, #e9ce5d 100%);
+}
+
+.sky-gradient-6 {
+  background: linear-gradient(to bottom, #154277 0%, #576e71 30%, #e1c45e 70%, #b26339 100%);
+}
+
+.sky-gradient-7 {
+  background: linear-gradient(to bottom, #163c52 0%, #4f4f47 30%, #c5752d 60%, #b7490f 80%, #2f1107 100%);
+}
+
+button {
+  border: 1px solid #333;
+  border-radius: 2em;
+  background: transparent;
+  padding: 0.75em;
+  font-size: 1.2em;
+  margin-top: 2em;
+  cursor: pointer;
+  transition: 0.25s ease-in-out;
+}
+button:hover {
+  -webkit-transform: scale(1.1);
+          transform: scale(1.1);
+}
+
+.pop {
+  -webkit-animation: pop 0.3s ease-in-out forwards;
+          animation: pop 0.3s ease-in-out forwards;
+}
+
+.slidein {
+  -webkit-animation: slidein 1s ease-out forwards;
+          animation: slidein 1s ease-out forwards;
+}
+
+.fromLeft {
+  -webkit-animation: fromleft 1s ease-out forwards;
+          animation: fromleft 1s ease-out forwards;
+}
+
+.fromRight {
+  -webkit-animation: fromright 1s ease-out forwards;
+          animation: fromright 1s ease-out forwards;
+}
+
+#mountain,
+.highlight {
+  -webkit-transform-origin: 50% 100%;
+          transform-origin: 50% 100%;
+}
+
+button:focus {
+  outline: 0;
+}
+
+@-webkit-keyframes slidein {
+  from {
+    -webkit-transform: scale(0.925);
+            transform: scale(0.925);
+  }
+  to {
+    -webkit-transform: scale(1);
+            transform: scale(1);
+  }
+}
+
+@keyframes slidein {
+  from {
+    -webkit-transform: scale(0.925);
+            transform: scale(0.925);
+  }
+  to {
+    -webkit-transform: scale(1);
+            transform: scale(1);
+  }
+}
+@-webkit-keyframes fromleft {
+  from {
+    -webkit-transform: translateX(-1px);
+            transform: translateX(-1px);
+  }
+  to {
+    -webkit-transform: translateX(0px);
+            transform: translateX(0px);
+  }
+}
+@keyframes fromleft {
+  from {
+    -webkit-transform: translateX(-1px);
+            transform: translateX(-1px);
+  }
+  to {
+    -webkit-transform: translateX(0px);
+            transform: translateX(0px);
+  }
+}
+@-webkit-keyframes fromright {
+  from {
+    -webkit-transform: translateX(1px);
+            transform: translateX(1px);
+  }
+  to {
+    -webkit-transform: translateX(0px);
+            transform: translateX(0px);
+  }
+}
+@keyframes fromright {
+  from {
+    -webkit-transform: translateX(1px);
+            transform: translateX(1px);
+  }
+  to {
+    -webkit-transform: translateX(0px);
+            transform: translateX(0px);
+  }
+}
+@-webkit-keyframes clouds {
+  from {
+    -webkit-transform: translateX(10 px);
+            transform: translateX(10 px);
+  }
+  to {
+    -webkit-transform: translateY(20px);
+            transform: translateY(20px);
+  }
+}
+@keyframes clouds {
+  from {
+    -webkit-transform: translateX(10 px);
+            transform: translateX(10 px);
+  }
+  to {
+    -webkit-transform: translateY(20px);
+            transform: translateY(20px);
+  }
+}
+@-webkit-keyframes pop {
+  0% {
+    -webkit-transform: scale(1);
+            transform: scale(1);
+  }
+  50% {
+    -webkit-transform: scale(0);
+            transform: scale(0);
+  }
+  75%,
+  100% {
+    -webkit-transform: scale(1);
+            transform: scale(1);
+  }
+}
+@keyframes pop {
+  0% {
+    -webkit-transform: scale(1);
+            transform: scale(1);
+  }
+  50% {
+    -webkit-transform: scale(0);
+            transform: scale(0);
+  }
+  75%,
+  100% {
+    -webkit-transform: scale(1);
+            transform: scale(1);
+  }
+}

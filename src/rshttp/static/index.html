@@ -2,10 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Hello World</title>
+    <title>示例</title>
+    <link href="index.css" rel="stylesheet">
+    <link href="favicon.ico" rel="icon" type="image/x-icon">
 </head>
 <body>
-<h1>Hello World</h1>
+<svg class="pop" height="300" id="svg" viewbox="0 0 100 100" width="300">
+    <filter id="blur">
+        <feGaussianBlur stdDeviation="1"/>
+    </filter>
+    <path class="slidein" d="" fill="#ab9457" id="mountain"/>
+</svg>
 
+<button onclick="generateMountain()">&nbsp;&nbsp;&nbsp;你好&nbsp;&nbsp;&nbsp;</button>
+<script src="index.js"></script>
 </body>
 </html>
