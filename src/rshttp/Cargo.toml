@@ -17,9 +17,7 @@ log = "0.4"
 pretty_env_logger = "0.3"
 
 [target.'cfg(unix)'.dependencies]
-nix = "0.15"
+libc = "0.2.65"
 
-[target.'cfg(windows)'.dependencies]
-winapi = "0.3"
 
 [dev-dependencies]

@@ -18,9 +18,24 @@ pub const ALLOWED_METHODS: [&str; 3] = ["GET", "HEAD", "OPTIONS"];
 pub const BUF_INIT_SIZE: usize = 2048;
 pub const BUF_MAX_SIZE: usize = 8192;
 
+#[cfg(not(target_os = "unix"))]
 async fn send_file(file: &mut File, stream: &mut TcpStream) -> Result<u64> {
     copy(file, stream).await
 }
+
+#[cfg(target_os = "unix")]
+async fn send_file(file: &mut File, stream: &mut TcpStream) -> Result<u64> {
+    use async_std::os::unix::io::AsRawFd;
+    use libc::sendfile;
+    unsafe {
+        let out_fd = stream.as_raw_fd();
+        let in_fd = file.as_raw_fd();
+        let offset = 0;
+        sendfile(out_fd, in_fd, &offset, 0);
+        Ok(offset)
+    }
+}
+
 
 #[inline]
 fn spawn_and_log_error<F>(fut: F) -> task::JoinHandle<()>
