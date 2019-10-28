@@ -29,6 +29,12 @@ impl PacketWrapper {
             PacketWrapper::Right(_) => false
         }
     }
+    pub fn unwrap(self) -> Box<[u8]> {
+        match self {
+            PacketWrapper::Left(data) => data,
+            PacketWrapper::Right(data) => data
+        }
+    }
 }
 
 pub struct Connection {
