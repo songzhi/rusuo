@@ -1,22 +1,23 @@
-use std::cell::RefCell;
 use std::io::{Read, Result, Write};
 use std::sync::{Arc, Condvar, Mutex};
 use std::sync::mpsc::{channel, Receiver};
 use std::thread;
+use std::thread::JoinHandle;
 use std::time::Duration;
 
 use rand::random;
 
 use connection::Connection;
-use packet::{Header, Packet};
+use packet::Packet;
 
 use crate::connection::PacketWrapper;
 
 pub mod packet;
 pub mod connection;
 
+type InterfaceHandle = Arc<FooBar>;
 
-pub fn packet_loop(ih: Arc<Interface>) {
+fn packet_loop(ih: InterfaceHandle) {
     loop {
         if let Ok(packet) = ih.rx.lock().unwrap().recv_timeout(Duration::from_millis(10)) {
             let is_left_side = packet.is_left_side();
@@ -37,18 +38,18 @@ pub fn packet_loop(ih: Arc<Interface>) {
     }
 }
 
-pub struct Interface {
+struct FooBar {
     left: Mutex<Connection>,
     right: Mutex<Connection>,
     rcv_var: Condvar,
     rx: Mutex<Receiver<PacketWrapper>>,
 }
 
-impl Interface {
-    pub fn new() -> Self {
+impl Default for FooBar {
+    fn default() -> Self {
         let (tx, rx) = channel();
         let left = Mutex::new(Connection::new(true, tx.clone()));
-        let right = Mutex::new(Connection::new(false, tx.clone()));
+        let right = Mutex::new(Connection::new(false, tx));
         Self {
             left,
             right,
@@ -56,7 +57,10 @@ impl Interface {
             rx: Mutex::new(rx),
         }
     }
-    pub fn get_connection(&self, is_left_side: bool) -> &Mutex<Connection> {
+}
+
+impl FooBar {
+    fn get_connection(&self, is_left_side: bool) -> &Mutex<Connection> {
         if is_left_side {
             &self.left
         } else {
@@ -65,9 +69,51 @@ impl Interface {
     }
 }
 
+pub struct Interface {
+    ih: Option<InterfaceHandle>,
+    jh: Option<JoinHandle<()>>,
+}
+
+impl Drop for Interface {
+    fn drop(&mut self) {
+        drop(self.ih.take());
+        self.jh
+            .take()
+            .expect("interface dropped more than once")
+            .join()
+            .unwrap();
+    }
+}
+
+impl Default for Interface {
+    fn default() -> Self {
+        let ih = InterfaceHandle::default();
+        let jh = {
+            let ih = ih.clone();
+            thread::spawn(move || packet_loop(ih))
+        };
+        Self {
+            ih: Some(ih),
+            jh: Some(jh),
+        }
+    }
+}
+
+impl Interface {
+    pub fn pair(&self) -> (GbnStream, GbnStream) {
+        (GbnStream {
+            is_left_side: true,
+            ih: self.ih.clone().unwrap(),
+        }, GbnStream {
+            is_left_side: false,
+            ih: self.ih.clone().unwrap(),
+        })
+    }
+}
+
 pub struct GbnStream {
-    pub ih: Arc<Interface>,
-    pub is_left_side: bool,
+    ih: InterfaceHandle,
+    is_left_side: bool,
 }
 
 impl Write for GbnStream {
