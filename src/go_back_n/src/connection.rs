@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::cmp::{min, Ordering};
 use std::collections::VecDeque;
 use std::io::Result;
 use std::sync::mpsc::Sender;
@@ -69,15 +69,17 @@ impl Connection {
         if self.send.is_sendable() && !self.unsent.is_empty() {
             let body_len = min(Self::MAX_BODY_SIZE as usize, self.unsent.len());
             let header = Header::new(self.send.get_next_seq_num_then_inc(), body_len as u32, false);
+            println!("Connection[{}]: Send {}", self.is_left_side as usize, header);
             let packet = header.as_bytes().iter().copied().chain(self.unsent.drain(..body_len)).collect::<Box<_>>();
             self.tx.send(PacketWrapper::new(packet.clone(), self.is_left_side)).unwrap();
             self.unacked.push_back(packet);
             self.reset_timer();
         }
         if let Some(timeout) = self.timer {
-            if timeout >= Instant::now() {
+            if timeout <= Instant::now() {
                 self.reset_timer();
                 for packet in self.unacked.iter() {
+                    println!("Connection[{}]: Resend {}", self.is_left_side as usize, Packet::parse(packet.as_ref()).unwrap().header);
                     self.tx.send(PacketWrapper::new(packet.clone(), self.is_left_side)).expect("Send failed");
                 };
             }
@@ -91,17 +93,21 @@ impl Connection {
 
     pub fn on_packet(&mut self, packet: Box<[u8]>) {
         if let Some(packet) = Packet::parse(packet.as_ref()) {
+            println!("Connection[{}]: Recv {}", self.is_left_side as usize, packet.header);
             if packet.is_ack() {
                 let acked_count = self.send.ack(packet.get_seq_num());
                 drop(self.unacked.drain(..acked_count));
                 if acked_count != 0 {
                     self.reset_timer();
                 }
-            } else if self.recv.rcv(packet.get_seq_num()) {
+            } else if let Some(is_fresh) = self.recv.rcv(packet.get_seq_num()) {
                 let ack_header = Header::new(packet.get_seq_num(), 0, true);
+                println!("Connection[{}]: Send {}", self.is_left_side as usize, ack_header);
                 let ack_packet = PacketWrapper::new(ack_header.as_bytes().iter().copied().collect::<Box<_>>(), self.is_left_side);
                 self.tx.send(ack_packet).expect("Send ACK failed");
-                self.incoming.extend(packet.body.iter().take(packet.get_body_len() as usize));
+                if is_fresh {
+                    self.incoming.extend(packet.body.iter().take(packet.get_body_len() as usize));
+                }
             }
         }
     }
@@ -132,7 +138,7 @@ impl SendSequenceSpace {
         if wrapping_lt(self.base, seq_num) {
             0
         } else {
-            let acked_count = seq_num.wrapping_sub(self.base.wrapping_add(1));
+            let acked_count = seq_num.wrapping_sub(self.base).wrapping_add(1);
             self.base = self.base.wrapping_add(acked_count);
             acked_count as usize
         }
@@ -164,13 +170,16 @@ impl RecvSequenceSpace {
             expected_seq_num
         }
     }
+    /// 返回值None代表当前无法接受的包,Some(false)代表已经接受过的包
     #[inline]
-    pub fn rcv(&mut self, seq_num: u32) -> bool {
-        if self.expected_seq_num == seq_num {
-            self.expected_seq_num += 1;
-            true
-        } else {
-            false
+    pub fn rcv(&mut self, seq_num: u32) -> Option<bool> {
+        match self.expected_seq_num.cmp(&seq_num) {
+            Ordering::Equal => {
+                self.expected_seq_num += 1;
+                Some(true)
+            }
+            Ordering::Greater => Some(false),
+            Ordering::Less => None
         }
     }
 }

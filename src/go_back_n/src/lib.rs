@@ -5,6 +5,8 @@ use std::sync::mpsc::{channel, Receiver};
 use std::thread;
 use std::time::Duration;
 
+use rand::random;
+
 use connection::Connection;
 use packet::{Header, Packet};
 
@@ -14,42 +16,63 @@ pub mod packet;
 pub mod connection;
 
 
+pub fn packet_loop(ih: Arc<Interface>) {
+    loop {
+        if let Ok(packet) = ih.rx.lock().unwrap().recv_timeout(Duration::from_millis(10)) {
+            let is_left_side = packet.is_left_side();
+            let packet = packet.unwrap();
+            if random::<u8>() > 200 {
+                println!("Loop: Ignored {} from Connection[{}]", Packet::parse(packet.as_ref()).unwrap().header, is_left_side as usize);
+                continue;
+            }
+            let mut c = ih.get_connection(!is_left_side).lock().unwrap();
+            c.on_packet(packet);
+            if !c.incoming.is_empty() {
+                ih.rcv_var.notify_all();
+            }
+        } else {
+            ih.left.lock().unwrap().on_tick().unwrap();
+            ih.right.lock().unwrap().on_tick().unwrap();
+        }
+    }
+}
+
 pub struct Interface {
-    left: RefCell<Connection>,
-    right: RefCell<Connection>,
+    left: Mutex<Connection>,
+    right: Mutex<Connection>,
     rcv_var: Condvar,
-    rx: Receiver<PacketWrapper>,
+    rx: Mutex<Receiver<PacketWrapper>>,
 }
 
 impl Interface {
-    pub fn get_connection(&self, is_left_side: bool) -> &RefCell<Connection> {
+    pub fn new() -> Self {
+        let (tx, rx) = channel();
+        let left = Mutex::new(Connection::new(true, tx.clone()));
+        let right = Mutex::new(Connection::new(false, tx.clone()));
+        Self {
+            left,
+            right,
+            rcv_var: Condvar::new(),
+            rx: Mutex::new(rx),
+        }
+    }
+    pub fn get_connection(&self, is_left_side: bool) -> &Mutex<Connection> {
         if is_left_side {
             &self.left
         } else {
             &self.right
         }
     }
-    pub fn packet_loop(&mut self) {
-        loop {
-            if let Ok(packet) = self.rx.recv_timeout(Duration::from_millis(10)) {
-                let mut c = self.get_connection(!packet.is_left_side()).borrow_mut();
-                c.on_packet(packet.unwrap());
-            } else {
-                self.left.borrow_mut().on_tick().unwrap();
-                self.right.borrow_mut().on_tick().unwrap();
-            }
-        }
-    }
 }
 
 pub struct GbnStream {
-    h: Arc<Interface>,
-    is_left_side: bool,
+    pub ih: Arc<Interface>,
+    pub is_left_side: bool,
 }
 
 impl Write for GbnStream {
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
-        let mut c = self.h.get_connection(self.is_left_side).borrow_mut();
+        let mut c = self.ih.get_connection(self.is_left_side).lock().unwrap();
         c.unsent.extend(buf.iter());
         Ok(buf.len())
     }
@@ -60,9 +83,7 @@ impl Write for GbnStream {
 
 impl Read for GbnStream {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        let mut c = self.h.get_connection(self.is_left_side).borrow_mut();
-        let cm = Mutex::new(false);
-        let mut cm = cm.lock().unwrap();
+        let mut c = self.ih.get_connection(self.is_left_side).lock().unwrap();
         loop {
             if !c.incoming.is_empty() {
                 let mut nread = 0;
@@ -76,8 +97,7 @@ impl Read for GbnStream {
                 drop(c.incoming.drain(..nread));
                 return Ok(nread);
             }
-
-            cm = self.h.rcv_var.wait(cm).unwrap();
+            c = self.ih.rcv_var.wait(c).unwrap();
         }
     }
 }

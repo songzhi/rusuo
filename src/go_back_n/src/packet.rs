@@ -1,3 +1,5 @@
+use std::fmt;
+
 use byteorder::NetworkEndian;
 use intbits;
 use intbits::Bits;
@@ -26,6 +28,11 @@ impl Header {
     }
 }
 
+impl fmt::Display for Header {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Packet[{}] {} {}", self.seq_num.get(), ["Normal", "Ack"][self.is_ack() as usize], self.body_len.get())
+    }
+}
 
 pub struct Packet<B: ByteSlice> {
     pub header: LayoutVerified<B, Header>,
@@ -48,3 +55,4 @@ impl<B: ByteSlice> Packet<B> {
         self.header.body_len.get()
     }
 }
+
