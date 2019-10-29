@@ -5,12 +5,11 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+use log::trace;
 use rand::random;
 
-use connection::Connection;
+use connection::{Connection, PacketWrapper};
 use packet::Packet;
-
-use crate::connection::PacketWrapper;
 
 pub mod packet;
 pub mod connection;
@@ -23,7 +22,7 @@ fn packet_loop(ih: InterfaceHandle) {
             let is_left_side = packet.is_left_side();
             let packet = packet.unwrap();
             if random::<u8>() > 200 {
-                println!("Loop: Ignored {} from Connection[{}]", Packet::parse(packet.as_ref()).unwrap().header, is_left_side as usize);
+                trace!("Loop: Ignored {} from Connection[{}]", Packet::parse(packet.as_ref()).unwrap().header, is_left_side as usize);
                 continue;
             }
             let mut c = ih.get_connection(!is_left_side).lock().unwrap();

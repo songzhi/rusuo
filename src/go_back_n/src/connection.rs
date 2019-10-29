@@ -4,6 +4,7 @@ use std::io::Result;
 use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant};
 
+use log::trace;
 use zerocopy::AsBytes;
 
 use super::packet::{Header, Packet};
@@ -69,7 +70,7 @@ impl Connection {
         if self.send.is_sendable() && !self.unsent.is_empty() {
             let body_len = min(Self::MAX_BODY_SIZE as usize, self.unsent.len());
             let header = Header::new(self.send.get_next_seq_num_then_inc(), body_len as u32, false);
-            println!("Connection[{}]: Send {}", self.is_left_side as usize, header);
+            trace!("Connection[{}]: Send {}", self.is_left_side as usize, header);
             let packet = header.as_bytes().iter().copied().chain(self.unsent.drain(..body_len)).collect::<Box<_>>();
             self.tx.send(PacketWrapper::new(packet.clone(), self.is_left_side)).unwrap();
             self.unacked.push_back(packet);
@@ -79,7 +80,7 @@ impl Connection {
             if timeout <= Instant::now() {
                 self.reset_timer();
                 for packet in self.unacked.iter() {
-                    println!("Connection[{}]: Resend {}", self.is_left_side as usize, Packet::parse(packet.as_ref()).unwrap().header);
+                    trace!("Connection[{}]: Resend {}", self.is_left_side as usize, Packet::parse(packet.as_ref()).unwrap().header);
                     self.tx.send(PacketWrapper::new(packet.clone(), self.is_left_side)).expect("Send failed");
                 };
             }
@@ -93,7 +94,7 @@ impl Connection {
 
     pub fn on_packet(&mut self, packet: Box<[u8]>) {
         if let Some(packet) = Packet::parse(packet.as_ref()) {
-            println!("Connection[{}]: Recv {}", self.is_left_side as usize, packet.header);
+            trace!("Connection[{}]: Recv {}", self.is_left_side as usize, packet.header);
             if packet.is_ack() {
                 let acked_count = self.send.ack(packet.get_seq_num());
                 drop(self.unacked.drain(..acked_count));
@@ -102,7 +103,7 @@ impl Connection {
                 }
             } else if let Some(is_fresh) = self.recv.rcv(packet.get_seq_num()) {
                 let ack_header = Header::new(packet.get_seq_num(), 0, true);
-                println!("Connection[{}]: Send {}", self.is_left_side as usize, ack_header);
+                trace!("Connection[{}]: Send {}", self.is_left_side as usize, ack_header);
                 let ack_packet = PacketWrapper::new(ack_header.as_bytes().iter().copied().collect::<Box<_>>(), self.is_left_side);
                 self.tx.send(ack_packet).expect("Send ACK failed");
                 if is_fresh {
