@@ -67,15 +67,7 @@ impl Connection {
     }
 
     pub fn on_tick(&mut self) -> Result<()> {
-        if self.send.is_sendable() && !self.unsent.is_empty() {
-            let body_len = min(Self::MAX_BODY_SIZE as usize, self.unsent.len());
-            let header = Header::new(self.send.get_next_seq_num_then_inc(), body_len as u32, false);
-            trace!("Connection[{}]: Send {}", self.is_left_side as usize, header);
-            let packet = header.as_bytes().iter().copied().chain(self.unsent.drain(..body_len)).collect::<Box<_>>();
-            self.tx.send(PacketWrapper::new(packet.clone(), self.is_left_side)).unwrap();
-            self.unacked.push_back(packet);
-            self.reset_timer();
-        }
+        self.send_if_could();
         if let Some(timeout) = self.timer {
             if timeout <= Instant::now() {
                 self.reset_timer();
@@ -90,6 +82,18 @@ impl Connection {
     #[inline]
     fn reset_timer(&mut self) {
         self.timer = Some(Instant::now() + TIMEOUT_DURATION);
+    }
+
+    pub fn send_if_could(&mut self) {
+        if self.send.is_sendable() && !self.unsent.is_empty() {
+            let body_len = min(Self::MAX_BODY_SIZE as usize, self.unsent.len());
+            let header = Header::new(self.send.get_next_seq_num_then_inc(), body_len as u32, false);
+            trace!("Connection[{}]: Send {}", self.is_left_side as usize, header);
+            let packet = header.as_bytes().iter().copied().chain(self.unsent.drain(..body_len)).collect::<Box<_>>();
+            self.tx.send(PacketWrapper::new(packet.clone(), self.is_left_side)).unwrap();
+            self.unacked.push_back(packet);
+            self.reset_timer();
+        }
     }
 
     pub fn on_packet(&mut self, packet: Box<[u8]>) {

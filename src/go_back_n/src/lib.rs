@@ -122,6 +122,8 @@ impl Write for GbnStream {
         Ok(buf.len())
     }
     fn flush(&mut self) -> Result<()> {
+        let mut c = self.ih.get_connection(self.is_left_side).lock().unwrap();
+        c.send_if_could();
         Ok(())
     }
 }
