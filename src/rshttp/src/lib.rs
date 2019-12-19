@@ -45,6 +45,8 @@ fn spawn_and_log_error<F>(fut: F) -> task::JoinHandle<()>
     task::spawn(async move {
         if let Err(e) = fut.await {
             error!("{}", e)
+        } else {
+            info!("Connection closed")
         }
     })
 }
@@ -88,8 +90,9 @@ impl StaticServerConnection {
         'rcv: loop {
             let mut rcvd = self.stream.read(buf.as_mut_slice()).await?;
             if rcvd == 0 {
-                continue;
+                break;
             }
+
             let mut is_partial = false;
             loop {
                 if is_partial {
